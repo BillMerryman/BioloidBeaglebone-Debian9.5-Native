@@ -1,0 +1,164 @@
+/** @file fileParse.c
+ *  @brief 
+ *
+ *
+ *
+ *  @author root
+ *  @bug No known bugs.
+ *
+ *  Created on: Mar 2, 2019
+ *
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdint.h>
+#include <err.h>
+#include <errno.h>
+
+#include "fileParse.h"
+
+void parseFile()
+{
+	FILE *fptr;
+	LINE *lines = NULL;
+	size_t num_lines = 0;
+
+	fptr = fopen("/sys/kernel/debug/remoteproc/remoteproc2/resource_table", "r");
+	if(fptr != NULL)
+	{
+		num_lines = getLines(fptr, lines);
+		printf("getLines complete (%i lines)\n", num_lines);
+		tokenizeLines(lines, num_lines);
+		printf("tokenizeLines complete\n");
+		printTokensPerLine(lines, num_lines);
+		printf("printTokensPerLine complete\n");
+		freeLines(lines, num_lines);
+		printf("freeLines complete\n");
+	}
+	fclose(fptr);
+}
+
+size_t getLines(FILE *fptr, LINE *lines)
+{
+	char *tmp = NULL;
+	size_t len = 0;
+	ssize_t nread = 0;
+	size_t num_lines = 0;
+
+	while((nread=getline(&tmp, &len, fptr)) != -1)
+	{
+		lines = realloc(lines, ++num_lines * sizeof(LINE));
+		lines[num_lines - 1].line = strdup(tmp);
+		lines[num_lines - 1].words = NULL;
+		lines[num_lines - 1].num_words = 0;
+	}
+
+	free(tmp);
+	return num_lines;
+}
+
+void tokenizeLines(LINE *lines, size_t num_lines)
+{
+	for(int counter = 0; counter < num_lines; counter++)
+	{
+		LINE *line = &lines[counter];
+		printf("%s", line->line);
+		for(char *end=line->line; *end!='\0'; end++)
+		{
+			while(isspace(*end))end++;
+			if(*end=='\0')break;
+			char *start=end;
+			size_t charactersInWord=0;
+			while((!isspace(*end)) && (*end != '\0'))
+			{
+				charactersInWord++;
+				end++;
+			}
+			line->words=realloc(line->words, ++(line->num_words) * sizeof(char *));
+			line->words[line->num_words - 1] = malloc(charactersInWord + 1);
+			memcpy(line->words[line->num_words - 1], start, charactersInWord);
+			line->words[line->num_words - 1][charactersInWord] = '\0';
+		}
+	}
+}
+
+void printLines(LINE *lines, size_t num_lines)
+{
+	for(int counter = 0; counter < num_lines; counter++)
+	{
+		printf("%s", lines[counter].line);
+	}
+}
+
+void printTokensPerLine(LINE *lines, size_t num_lines)
+{
+	for(int counter = 0; counter < num_lines; counter++)
+	{
+		for(int wordCounter = 0; wordCounter < lines[counter].num_words; wordCounter++)
+		{
+			printf("%s ", lines[counter].words[wordCounter]);
+		}
+		printf("\n");
+	}
+}
+
+void freeLines(LINE* lines, size_t num_lines)
+{
+	for(int counter = 0; counter < num_lines; counter++)
+	{
+		for(int wordCounter = 0; wordCounter < lines[counter].num_words; wordCounter++)
+		{
+			free(lines[counter].words[wordCounter]);
+		}
+		free(lines[counter].words);
+		free(lines[counter].line);
+	}
+
+	free(lines);
+}
+
+
+//void parseFile()
+//{
+//	FILE *fptr;
+//	char *resourceTable=(char *)malloc(1);
+//	char *tmp=NULL;
+//	size_t len;
+//	ssize_t nread;
+//
+//	if(resourceTable!=NULL)
+//	{
+//		*resourceTable='\0';
+//	}
+//	else
+//	{
+//		exit(1);
+//	}
+//
+//	fptr = fopen("/sys/kernel/debug/remoteproc/remoteproc2/resource_table", "r");
+//	if(fptr != NULL)
+//	{
+//		while((nread=getline(&tmp, &len, fptr)) !=-1)
+//		{
+//			resourceTable = realloc(resourceTable, strlen(resourceTable) + len + 1);
+//			strcat(resourceTable, tmp);
+//		}
+//
+//
+//		char *newline = resourceTable;
+//		size_t newlineCount = 0;
+//		for(;*newline!='\0';newline++)
+//		{
+//			if(*newline=='\n') newlineCount++;
+//		}
+
+//		free(tmp);
+//		free(resourceTable);
+//	}
+//	fclose(fptr);
+//}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item value="false" key="isRegEx"/>
+		<item value="size_t" key="selection"/>
+		<item value="true" key="casesensitive"/>
+		<item value="false" key="incremental"/>
+		<item value="true" key="wrap"/>
+		<item value="false" key="wholeword"/>
+		<list key="findhistory">
+			<item value="size_t"/>
+			<item value="Manager2"/>
+			<item value="manager2"/>
+			<item value="font"/>
+			<item value="PRUInterop0Data"/>
+			<item value="sceneStop"/>
+			<item value="motionGetSection"/>
+			<item value="motionLoadPage"/>
+		</list>
+		<list key="replacehistory">
+			<item value="Manager"/>
+			<item value=""/>
+			<item value="manager"/>
+			<item value="(((unsigned int *)PRUInterop1Data) + (IMAGE_ROWS_IN_PIXELS * IMAGE_COLUMNS_IN_INTS_RGB)) - 1;"/>
+			<item value="PRUInterop1Data"/>
+			<item value="imageReadyFlag"/>
+			<item value="g_PRUInteropData"/>
+			<item value="getImageRGB565"/>
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item value="307" key="DIALOG_WIDTH"/>
+		<item value="1|Sans|10.0|0|GTK|1|" key="DIALOG_FONT_NAME"/>
+		<item value="409" key="DIALOG_HEIGHT"/>
+		<item value="58" key="DIALOG_Y_ORIGIN"/>
+		<item value="4" key="DIALOG_X_ORIGIN"/>
+	</section>
+</section>

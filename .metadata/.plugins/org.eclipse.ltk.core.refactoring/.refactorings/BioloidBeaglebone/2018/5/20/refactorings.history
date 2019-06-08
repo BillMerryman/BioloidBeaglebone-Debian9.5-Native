@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;BioloidBeaglebone/visionManager2.cpp&apos; to &apos;visionManager.cpp&apos;" description="Rename resource &apos;visionManager2.cpp&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="visionManager2.cpp" name="visionManager.cpp" stamp="1526605666685" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;BioloidBeaglebone/visionManager2.hpp&apos; to &apos;visionManager.hpp&apos;" description="Rename resource &apos;visionManager2.hpp&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="visionManager2.hpp" name="visionManager.hpp" stamp="1526605676410" updateReferences="true"/>
+</session>

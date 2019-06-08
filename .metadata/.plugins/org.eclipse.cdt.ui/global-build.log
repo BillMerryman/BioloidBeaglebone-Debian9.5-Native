@@ -1,0 +1,28 @@
+01:13:18 **** Clean-only build of configuration Default for project BioloidBeaglebone ****
+make clean 
+make -C PRU_0 clean
+make[1]: Entering directory '/root/Desktop/BioloidBeaglebone_Debian9.5_remoteproc/BioloidBeaglebone/PRU_0'
+
+************************************************************
+Cleaning project: PRU_0
+
+Removing files in the "gen" directory
+
+Finished cleaning project: PRU_0
+************************************************************
+
+make[1]: Leaving directory '/root/Desktop/BioloidBeaglebone_Debian9.5_remoteproc/BioloidBeaglebone/PRU_0'
+make -C PRU_1 clean
+make[1]: Entering directory '/root/Desktop/BioloidBeaglebone_Debian9.5_remoteproc/BioloidBeaglebone/PRU_1'
+
+************************************************************
+Cleaning project: PRU_1
+
+Removing files in the "gen" directory
+
+Finished cleaning project: PRU_1
+************************************************************
+
+make[1]: Leaving directory '/root/Desktop/BioloidBeaglebone_Debian9.5_remoteproc/BioloidBeaglebone/PRU_1'
+rm -f ./*.o
+rm -f BioloidBeaglebone

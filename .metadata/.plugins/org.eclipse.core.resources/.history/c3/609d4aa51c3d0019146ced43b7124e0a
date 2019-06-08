@@ -1,0 +1,22 @@
+/** @file fileParse.h
+ *  @brief 
+ *
+ *
+ *
+ *  @author root
+ *  @bug No known bugs.
+ *
+ *  Created on: Mar 2, 2019
+ *
+ */
+
+#ifndef FILEPARSE_H_
+#define FILEPARSE_H_
+
+typedef struct{
+	char *line;
+	char **words;
+	size_t num_words;
+} LINE;
+
+#endif /* FILEPARSE_H_ */

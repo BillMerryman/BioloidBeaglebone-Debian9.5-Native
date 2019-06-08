@@ -1,0 +1,136 @@
+login:root 
+password:root
+
+--------------disable HDMI and eMMC (make sure /boot/uEnv.txt looks like this)
+
+disable_uboot_overlay_emmc=1
+disable_uboot_overlay_video=1
+disable_uboot_overlay_audio=1
+disable_uboot_overlay_wireless=1
+disable_uboot_overlay_adc=1
+###
+###PRUSS OPTIONS
+###pru_rproc (4.4.x-ti kernel)
+#uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-4-TI-00A0.dtbo
+###pru_rproc (4.14.x-ti kernel)
+uboot_overlay_pru=/lib/firmware/AM335X-PRU-RPROC-4-14-TI-00A0.dtbo
+###pru_uio (4.4.x-ti, 4.14.x-ti & mainline/bone kernel)
+#uboot_overlay_pru=/lib/firmware/AM335X-PRU-UIO-00A0.dtbo
+###
+###Cape Universal Enable
+enable_uboot_cape_universal=1
+
+--------------set timezone
+
+sudo timedatectl set-timezone 'America/New_York'
+
+----------- Enable wireless
+
+connmanctl
+disable wifi
+enable wifi
+scan wifi
+services
+agent on
+config (long name returned by services) --ipv4 manual <ip address> <netmask> <gateway>  --nameservers <ip address>
+connect (long name returned by services)
+quit
+
+---------- Resize to fit SD card
+
+cd /opt/scripts/tools
+git pull
+./grow_partition.sh
+
+---------------update
+
+apt-get update
+
+---------------to make life easier
+
+apt-get install leafpad
+
+---------------enable remote X without SSH
+
+go into /etc/lightdm/lightdm.conf and edit the XDMCP settings (important! leave 'key' commented out...):
+[LightDM]
+start-default-seat=false
+[Seat:*]
+xserver-allow-tcp=true
+autologin-user=root
+[XDMCPServer]
+enabled=true
+port=177
+#key=
+
+-------------enable root SSH for SFTP
+
+edit etc/ssh/sshd_config
+PermitRootLogin yes
+
+------------enable auto login 
+
+edit /etc/pam.d/lightdm-autologin to comment out:
+auth   required pam_succeed_if.so user != root quiet_success
+
+may also need to add user to autologin group
+# groupadd -r autologin
+# gpasswd -a username autologin
+
+
+------------install opencv
+
+apt-get install build-essential cmake pkg-config
+apt-get install libtiff5-dev libjpeg-dev libjasper-dev libpng12-dev
+apt-get install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev 
+apt-get install libgtk2.0-dev
+sudo apt-get install unzip
+
+wget -O opencv-3.4.0.zip https://github.com/Itseez/opencv/archive/3.4.0.zip
+wget -O opencv_contrib-3.4.0.zip https://github.com/Itseez/opencv_contrib/archive/3.4.0.zip
+
+unzip opencv-3.4.0.zip
+unzip opencv_contrib-3.4.0.zip
+
+cd opencv-3.4.0
+mkdir build && cd build
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr/local \
+-D OPENCV_EXTRA_MODULES_PATH=/root/Desktop/opencv_contrib-3.4.0/modules \
+-D INSTALL_PYTHON_EXAMPLES=OFF \
+-D INSTALL_C_EXAMPLES=OFF \
+-D BUILD_EXAMPLES=OFF \
+-D WITH_CUDA=OFF \
+-D WITH_CUFFT=OFF \
+-D WITH_CUBLAS=OFF \
+-D WITH_NVCUVID=OFF \
+-D WITH_OPENCL=OFF \
+-D WITH_OPENCLAMDFFT=OFF \
+-D WITH_OPENCLAMDBLAS=OFF \
+-D ENABLE_VFPV3=ON \
+-D ENABLE_NEON=ON \
+..
+
+free //check for swap file, if not present do the following:
+dd if=/dev/zero of=/var/swap.img bs=1024k count=1000 //this may take a while to run
+mkswap /var/swap.img
+chmod 600 /var/swap.img
+swapon /var/swap.img
+
+make
+make install
+ldconfig
+
+swapoff /var/swap.img //if you turned on the swap file previously
+
+------------PRU Compilation Support
+
+if it isn't already installed, install the Pru Software Support Package. I installed to /usr/lib/ti/pru-software-support-package and put a symlink on the desktop.
+
+In /etc/environment, add:
+export PRU_CGT=/usr/share/ti/cgt-pru
+export PRU_SUPPORT=/usr/lib/ti/pru-software-support-package
+
+------------to fix bad DOS line returns in scripts
+
+sed -i -e 's/\r$//' scriptname.sh
