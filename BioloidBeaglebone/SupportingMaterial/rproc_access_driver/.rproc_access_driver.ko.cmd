@@ -1,1 +1,0 @@
-cmd_/root/Desktop/rproc_access_driver/rproc_access_driver.ko := ld -EL -r  -T ./scripts/module-common.lds --build-id  -T ./arch/arm/kernel/module.lds -o /root/Desktop/rproc_access_driver/rproc_access_driver.ko /root/Desktop/rproc_access_driver/rproc_access_driver.o /root/Desktop/rproc_access_driver/rproc_access_driver.mod.o ;  true

@@ -10,12 +10,11 @@ MODULE_AUTHOR("Bill Merryman");
 MODULE_DESCRIPTION("A simple module to access information from the PRU rproc.");
 MODULE_VERSION("0.01");
 
-static struct rproc_subdev *rproc_subdev;
+static rproc_subdev *rproc_subdev;
 
 int rproc_access_driver_probe(struct rproc_subdev *subdev)
 {
 	printk(KERN_INFO "Carveout subdevice successfully probed.\n");
-	return 0;
 }
 
 void rproc_access_driver_remove(struct rproc_subdev *subdev)
@@ -67,9 +66,7 @@ static void __exit rproc_access_driver_exit(void)
 	 * Here we will have to account for the possibility that the rproc
 	 * may have been already removed by the time we remove our driver.
 	 * So we need to check for its existance, and if it exists, remove
-	 * the subdevice we created for the carveout. We will also have to
-	 * account if the related PRU is running, in which case we will have
-	 * to do a full teardown before the main exit logic.
+	 * the subdevice we created for the carveout.
 	 */
 	struct device_node *np;
 	struct platform_device * pdev;

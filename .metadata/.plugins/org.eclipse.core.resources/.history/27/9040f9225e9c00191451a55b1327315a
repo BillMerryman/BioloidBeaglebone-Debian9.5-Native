@@ -10,7 +10,7 @@ MODULE_AUTHOR("Bill Merryman");
 MODULE_DESCRIPTION("A simple module to access information from the PRU rproc.");
 MODULE_VERSION("0.01");
 
-static struct rproc_subdev *rproc_subdev;
+static rproc_subdev *rproc_subdev;
 
 int rproc_access_driver_probe(struct rproc_subdev *subdev)
 {

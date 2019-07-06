@@ -67,11 +67,9 @@ void visionManagerUninitialize();
  * 	@return void.
  *
  */
-void visionManagerProcess();
-
+void visionManagerProcess(char key);
 
 void visionManagerProcessThreshold();
-
 
 void visionManagerProcessDNN();
 

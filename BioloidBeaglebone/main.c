@@ -42,7 +42,7 @@ int main (int argc, char *argv[])
 
 	while(key != 'x')
 	{
-		visionManagerProcess();
+		visionManagerProcess(key);
 		motionManagerProcess(key);
 		key = cvWaitKey(25);
 	}
