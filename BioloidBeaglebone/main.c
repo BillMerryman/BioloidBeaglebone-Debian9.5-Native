@@ -27,7 +27,7 @@
 int main (int argc, char *argv[])
 {
 
-	if(argc < 6)
+	if(argc < 7)
 	{
 		fprintf(stderr, "Usage: BioloidBeaglebone PRU0Firmware PRU1Firmware MotionFile MLProtoFile MLCaffeFile");
 		return -1;
@@ -38,7 +38,7 @@ int main (int argc, char *argv[])
 	initializePRU(argv[1], argv[2]);
 
 	motionManagerInitialize(argv[3]);
-	visionManagerInitialize(argv[4], argv[5]);
+	visionManagerInitialize(argv[4], argv[5], argv[6]);
 
 	while(key != 'x')
 	{

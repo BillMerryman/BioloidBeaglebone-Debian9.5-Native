@@ -22,7 +22,7 @@ enable_uboot_cape_universal=1
 
 --------------set timezone
 
-sudo timedatectl set-timezone 'America/New_York'
+timedatectl set-timezone 'America/New_York'
 
 ----------- Enable wireless
 
@@ -33,6 +33,8 @@ scan wifi
 services
 agent on
 config (long name returned by services) --ipv4 manual <ip address> <netmask> <gateway>  --nameservers <ip address>
+or
+config (long name returned by services) --ipv4 dhcp
 connect (long name returned by services)
 quit
 
@@ -65,7 +67,7 @@ port=177
 
 -------------enable root SSH for SFTP
 
-edit etc/ssh/sshd_config
+edit /etc/ssh/sshd_config
 PermitRootLogin yes
 
 ------------enable auto login 
@@ -81,22 +83,22 @@ may also need to add user to autologin group
 ------------install opencv
 
 apt-get install build-essential cmake pkg-config
-apt-get install libtiff5-dev libjpeg-dev libjasper-dev libpng12-dev
+apt-get install libtiff5-dev libjpeg-dev libpng-dev // libjasper-dev was included here previously. No longer available. May already be in opencv 3rd party.
 apt-get install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev 
 apt-get install libgtk2.0-dev
-sudo apt-get install unzip
+apt-get install unzip
 
-wget -O opencv-3.4.0.zip https://github.com/Itseez/opencv/archive/3.4.0.zip
-wget -O opencv_contrib-3.4.0.zip https://github.com/Itseez/opencv_contrib/archive/3.4.0.zip
+wget -O opencv-3.4.3.zip https://github.com/Itseez/opencv/archive/3.4.3.zip
+wget -O opencv_contrib-3.4.3.zip https://github.com/Itseez/opencv_contrib/archive/3.4.3.zip
 
-unzip opencv-3.4.0.zip
-unzip opencv_contrib-3.4.0.zip
+unzip opencv-3.4.3.zip
+unzip opencv_contrib-3.4.3.zip
 
-cd opencv-3.4.0
+cd opencv-3.4.3
 mkdir build && cd build
 cmake -D CMAKE_BUILD_TYPE=RELEASE \
 -D CMAKE_INSTALL_PREFIX=/usr/local \
--D OPENCV_EXTRA_MODULES_PATH=/root/Desktop/opencv_contrib-3.4.0/modules \
+-D OPENCV_EXTRA_MODULES_PATH=/root/Desktop/opencv_contrib-3.4.3/modules \
 -D INSTALL_PYTHON_EXAMPLES=OFF \
 -D INSTALL_C_EXAMPLES=OFF \
 -D BUILD_EXAMPLES=OFF \
@@ -122,14 +124,16 @@ make install
 ldconfig
 
 swapoff /var/swap.img //if you turned on the swap file previously
+rm /var/swap.img //to recover the 1GB of space
 
 ------------PRU Compilation Support
-
-if it isn't already installed, install the Pru Software Support Package. I installed to /usr/lib/ti/pru-software-support-package and put a symlink on the desktop.
 
 In /etc/environment, add:
 export PRU_CGT=/usr/share/ti/cgt-pru
 export PRU_SUPPORT=/usr/lib/ti/pru-software-support-package
+
+create a symlink named 'bin' in /usr/share/ti/cgt-pru to point to /usr/bin:
+ln -s /usr/bin /usr/share/ti/cgt-pru/bin
 
 ------------to fix bad DOS line returns in scripts
 
