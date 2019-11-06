@@ -70,14 +70,22 @@ void visionManagerUninitialize();
  */
 void visionManagerProcess(char key);
 
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+
+void visionManagerInitializeCaffe();
+
+void visionManagerInitializeDarknet();
+
 void visionManagerProcessThreshold();
 
 void visionManagerProcessCaffe();
 
 void visionManagerProcessDarknet();
 
-#ifdef __cplusplus
-}
 #endif
 
 
