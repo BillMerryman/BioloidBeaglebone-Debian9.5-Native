@@ -43,7 +43,7 @@ volatile int *imageReadyFlag;
 cv::Mat displayImage;
 cv::Mat processingImage;
 Net net;
-int imageProcessingType = 2;
+int imageProcessingType = 3;
 
 float confThreshold = 0.2;
 float nmsThreshold = 0.3;
@@ -64,7 +64,7 @@ void visionManagerInitialize(const char *namesFile, const char *modelFile, const
 	imageReadyFlag = ((int *)(&(PRUInterop1Data->imageReadyFlag)));
 	net = cv::dnn::readNet(weightsFile, modelFile);
 
-	//visionManagerInitializeDarknet();
+	visionManagerInitializeDarknet();
 
 	ifstream ifs(namesFile);
 	string line;
