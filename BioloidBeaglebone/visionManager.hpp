@@ -42,7 +42,15 @@ extern "C" {
  * 	@return void.
  *
  */
-void visionManagerInitialize(const char *namesFile, const char *modelFile, const char *weightsFile);
+void visionManagerInitialize(const char *caffeNamesFile,
+								const char *prototxtFile,
+								const char *caffemodelFile,
+								float caffeConf,
+								const char *darknetNamesFile,
+								const char *cfgFile,
+								const char *weightsFile,
+								float darknetConf,
+								float darknetNMSThreshold);
 
 /** @brief Uninitializes the image/vision subsystem
  *
@@ -80,7 +88,11 @@ void visionManagerInitializeCaffe();
 
 void visionManagerInitializeDarknet();
 
+void visionManagerProcessNone();
+
 void visionManagerProcessThreshold();
+
+void visionManagerCaptureThreshold();
 
 void visionManagerProcessCaffe();
 

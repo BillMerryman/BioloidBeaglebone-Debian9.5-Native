@@ -27,18 +27,39 @@
 int main (int argc, char *argv[])
 {
 
-	if(argc < 7)
+	if(argc < 13)
 	{
-		fprintf(stderr, "Usage: BioloidBeaglebone PRU0Firmware PRU1Firmware MotionFile MLProtoFile MLCaffeFile");
+		fprintf(stderr, "Usage: BioloidBeaglebone PRU0Firmware PRU1Firmware MotionFile MLCaffeNamesFile MLProtoFile MLCaffeFile MLCaffeConfidence MLDarknetNamesFile MLDarknetCfgFile MLDarknetWeightsFile MLDarknetConfidence MLDarknetNMSThreshold");
 		return -1;
 	}
 
 	int key = 0;
 
-	initializePRU(argv[1], argv[2]);
+	const char *PRU_0Firmware = argv[1];
+	const char *PRU_1Firmware = argv[2];
+	const char *motionFile = argv[3];
+	const char *caffeNamesFile = argv[4];
+	const char *protoFile = argv[5];
+	const char *modelFile = argv[6];
+	float caffeConfidence = atof(argv[7]);
+	const char *darknetNamesFile = argv[8];
+	const char *cfgFile = argv[9];
+	const char *weightsFile = argv[10];
+	float darknetConfidence = atof(argv[11]);
+	float darknetNMSThreshold = atof(argv[12]);
 
-	motionManagerInitialize(argv[3]);
-	visionManagerInitialize(argv[4], argv[5], argv[6]);
+	initializePRU(PRU_0Firmware, PRU_1Firmware);
+
+	motionManagerInitialize(motionFile);
+	visionManagerInitialize(caffeNamesFile,
+							protoFile,
+							modelFile,
+							caffeConfidence,
+							darknetNamesFile,
+							cfgFile,
+							weightsFile,
+							darknetConfidence,
+							darknetNMSThreshold);
 
 	while(key != 'x')
 	{

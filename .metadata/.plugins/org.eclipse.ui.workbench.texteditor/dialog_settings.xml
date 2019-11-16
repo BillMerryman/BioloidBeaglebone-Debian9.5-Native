@@ -3,36 +3,36 @@
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
 		<item value="257" key="DIALOG_WIDTH"/>
 		<item value="58" key="DIALOG_Y_ORIGIN"/>
-		<item value="4" key="DIALOG_X_ORIGIN"/>
 		<item value="381" key="DIALOG_HEIGHT"/>
+		<item value="4" key="DIALOG_X_ORIGIN"/>
 		<item value="1|Segoe UI|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI" key="DIALOG_FONT_NAME"/>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="true" key="wrap"/>
-		<item value="true" key="casesensitive"/>
 		<item value="false" key="isRegEx"/>
+		<item value="true" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="false" key="wholeword"/>
-		<item value="resized" key="selection"/>
+		<item value="darknetNonMaximaSuppressionThreshold" key="selection"/>
 		<list key="findhistory">
+			<item value="nmsThreshold"/>
+			<item value="darknetConfidence"/>
+			<item value="confThreshold"/>
+			<item value="classes"/>
+			<item value="caffeClasses"/>
+			<item value="net"/>
 			<item value="resized"/>
 			<item value="size_t"/>
-			<item value="Manager2"/>
-			<item value="manager2"/>
-			<item value="font"/>
-			<item value="PRUInterop0Data"/>
-			<item value="sceneStop"/>
-			<item value="motionGetSection"/>
 		</list>
 		<list key="replacehistory">
+			<item value="darknetNonMaximaSuppressionThreshold"/>
+			<item value="darknetConfidence"/>
+			<item value="caffeClasses"/>
+			<item value="darknetNet"/>
+			<item value="caffeNet"/>
 			<item value="Manager"/>
 			<item value=""/>
 			<item value="manager"/>
-			<item value="(((unsigned int *)PRUInterop1Data) + (IMAGE_ROWS_IN_PIXELS * IMAGE_COLUMNS_IN_INTS_RGB)) - 1;"/>
-			<item value="PRUInterop1Data"/>
-			<item value="imageReadyFlag"/>
-			<item value="g_PRUInteropData"/>
-			<item value="getImageRGB565"/>
 		</list>
 	</section>
 </section>

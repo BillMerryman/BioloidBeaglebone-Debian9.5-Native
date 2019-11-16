@@ -1,0 +1,62 @@
+/** @file main.c
+ *  @brief Initialization and system starting point.
+ *
+ *  Right now we just initialize the PRUs and loop through looking for keyboard input
+ *  to initiate a servo action (like playing a page), and taking a frame of video and
+ *  processing it with OpenCV color range matching and moments recognition.
+ *
+ *  @author Bill Merryman
+ *  @bug No known bugs.
+ *
+ *  Created on: Oct 16, 2015
+ *
+ */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+
+#include "cv.h"
+#include "highgui.h"
+#include "pru.h"
+#include "PRUInterop.h"
+#include "motionManager.h"
+#include "visionManager.hpp"
+
+int main (int argc, char *argv[])
+{
+
+	if(argc < 13)
+	{
+		fprintf(stderr, "Usage: BioloidBeaglebone PRU0Firmware PRU1Firmware MotionFile MLCaffeNamesFile MLProtoFile MLCaffeFile MLCaffeConfidence MLDarknetNamesFile MLDarknetCfgFile MLDarknetWeightsFile MLDarknetConfidence MLDarknetNMSThreshold");
+		return -1;
+	}
+
+	int key = 0;
+
+	const char *PRU_0Firmware = argv[1];
+	const char *PRU_1Firmware = argv[2];
+	const char *motionFile = argv[3];
+	const char *caffeNamesFile = argv[4];
+	const char *protoFile = argv[5];
+	const char *modelFile = argv[6];
+	float
+
+
+	initializePRU(argv[1], argv[2]);
+
+	motionManagerInitialize(argv[3]);
+	visionManagerInitialize(argv[4], argv[5], argv[6]);
+
+	while(key != 'x')
+	{
+		visionManagerProcess(key);
+		motionManagerProcess(key);
+		key = cvWaitKey(25);
+	}
+
+	visionManagerUninitialize();
+	stopPRU_0();
+	stopPRU_1();
+}

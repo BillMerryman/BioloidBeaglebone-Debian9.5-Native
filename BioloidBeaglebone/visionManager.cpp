@@ -42,16 +42,34 @@ using namespace cv::dnn;
 volatile int *imageReadyFlag;
 cv::Mat displayImage;
 cv::Mat processingImage;
-Net net;
-int imageProcessingType = 3;
 
-float confThreshold = 0.2;
-float nmsThreshold = 0.3;
+Net caffeNet;
+Net darknetNet;
 
-std::vector<std::string> classes;
+int imageProcessingType = 0;
+
+Scalar thresholdLow = Scalar(60, 0, 100);
+Scalar thresholdHigh = Scalar(200, 80, 255);
+Rect thresholdROI = Rect(135, 95, 50, 50);
+
+float caffeConfidence = 0.0;
+float darknetConfidence = 0.0;
+float darknetNonMaximaSuppressionThreshold = 0.0;
+
+std::vector<std::string> caffeClasses;
+std::vector<std::string> darknetClasses;
+
 std::vector<cv::String> unconnectedOutputLayersNames;
 
-void visionManagerInitialize(const char *namesFile, const char *modelFile, const char *weightsFile)
+void visionManagerInitialize(const char *caffeNamesFile,
+								const char *prototxtFile,
+								const char *caffemodelFile,
+								float caffeConf,
+								const char *darknetNamesFile,
+								const char *cfgFile,
+								const char *weightsFile,
+								float darknetConf,
+								float darknetNMSThreshold)
 {
 	CvSize inputSize;
 	inputSize.width = IMAGE_COLUMNS_IN_PIXELS;
@@ -62,16 +80,29 @@ void visionManagerInitialize(const char *namesFile, const char *modelFile, const
 	displayImage = cv::Mat(inputSize, CV_8UC3, (void*)(PRUInterop1Data->imageData));
 	processingImage = cv::Mat(inputSize, CV_8UC3);
 	imageReadyFlag = ((int *)(&(PRUInterop1Data->imageReadyFlag)));
-	net = cv::dnn::readNet(weightsFile, modelFile);
 
+	caffeNet = cv::dnn::readNet(caffemodelFile, prototxtFile);
+	darknetNet = cv::dnn::readNet(weightsFile, cfgFile);
+
+	caffeConfidence = caffeConf;
+	darknetConfidence = darknetConf;
+	darknetNonMaximaSuppressionThreshold = darknetNMSThreshold;
+
+	visionManagerInitializeCaffe();
 	visionManagerInitializeDarknet();
 
-	ifstream ifs(namesFile);
-	string line;
-	while (getline(ifs, line)) classes.push_back(line);
+	string nameLine;
+
+	ifstream cnf(caffeNamesFile);
+	while (getline(cnf, nameLine)) caffeClasses.push_back(nameLine);
+
+	ifstream dnf(darknetNamesFile);
+	while (getline(dnf, nameLine)) darknetClasses.push_back(nameLine);
 
 	cvNamedWindow("Display_Image", CV_WINDOW_AUTOSIZE);
 	cvNamedWindow("Processing_Image", CV_WINDOW_AUTOSIZE);
+	setWindowTitle("Display_Image", "No Image Processing.");
+	setWindowTitle("Processing_Image", "Not Used.");
 }
 
 void visionManagerInitializeCaffe()
@@ -81,8 +112,8 @@ void visionManagerInitializeCaffe()
 
 void visionManagerInitializeDarknet()
 {
-        vector<int> unconnectedOutputLayersIndices = net.getUnconnectedOutLayers();
-        vector<String> outputLayersNames = net.getLayerNames();
+        vector<int> unconnectedOutputLayersIndices = darknetNet.getUnconnectedOutLayers();
+        vector<String> outputLayersNames = darknetNet.getLayerNames();
         unconnectedOutputLayersNames.resize(unconnectedOutputLayersIndices.size());
         for (size_t i = 0; i < unconnectedOutputLayersIndices.size(); ++i)
         unconnectedOutputLayersNames[i] = outputLayersNames[unconnectedOutputLayersIndices[i] - 1];
@@ -96,22 +127,65 @@ void visionManagerUninitialize()
 
 void visionManagerProcess(char key)
 {
-	if(key=='t') imageProcessingType=1;
-	if(key=='d') imageProcessingType=3;
 	if(*imageReadyFlag == IMAGE_NOT_READY) return;
+
+	if(key=='n')
+	{
+		imageProcessingType=0;
+		setWindowTitle("Display_Image", "No Image Processing.");
+		setWindowTitle("Processing_Image", "Not Used.");
+	}
+	if(key=='t')
+	{
+		imageProcessingType=1;
+		setWindowTitle("Display_Image", "Process Image By Threshold");
+		setWindowTitle("Processing_Image", "Image Moments");
+	}
+	if(key=='k')
+	{
+		imageProcessingType=2;
+		setWindowTitle("Display_Image", "Capture color key for Threshold");
+		setWindowTitle("Processing_Image", "Not Used.");
+	}
+	if(key=='c')
+	{
+		imageProcessingType=3;
+		setWindowTitle("Display_Image", "Process Image By Caffe");
+		setWindowTitle("Processing_Image", "Not Used.");
+	}
+	if(key=='d')
+	{
+		imageProcessingType=4;
+		setWindowTitle("Display_Image", "Process Image By Darknet");
+		setWindowTitle("Processing_Image", "Not Used.");
+	}
+
 	switch(imageProcessingType)
 	{
+		case 0:
+			visionManagerProcessNone();
+			break;
 		case 1:
 			visionManagerProcessThreshold();
 			break;
 		case 2:
-			visionManagerProcessCaffe();
+			visionManagerCaptureThreshold();
 			break;
 		case 3:
+			visionManagerProcessCaffe();
+			break;
+		case 4:
 			visionManagerProcessDarknet();
 			break;
 	}
+
 	*imageReadyFlag = IMAGE_NOT_READY;
+}
+
+void visionManagerProcessNone()
+{
+	imshow("Display_Image", displayImage);
+	imshow("Processing_Image", processingImage);
 }
 
 void visionManagerProcessThreshold()
@@ -129,7 +203,7 @@ void visionManagerProcessThreshold()
 	Mat display = displayImage.clone();
 	Mat processing = displayImage.clone();
 
-	inRange(display, Scalar(60, 0, 100), Scalar(200, 80, 255), processing);
+	inRange(display, thresholdLow, thresholdHigh, processing);
 	cv::Moments moments = cv::moments(processing, false);
 	area = moments.m00;
 	if (area > 1000000)
@@ -140,10 +214,41 @@ void visionManagerProcessThreshold()
 		rectangle(display, cvPoint(position.x - 5, position.y - 5), cvPoint(position.x + 5, position.y + 5), cvScalar(0, 255, 0, 0), 1, 8, 0);
 		putText(display, outputMessage, Point(position.x + 10, position.y + 5), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
 	}
-	setWindowTitle("Display_Image", "Process Image By Threshold");
-	setWindowTitle("Processing_Image", "Image Moments");
 	imshow("Display_Image", display);
 	imshow("Processing_Image", processing);
+}
+
+void visionManagerCaptureThreshold()
+{
+	char outputMessage[64];
+	double minR;
+	double minG;
+	double minB;
+	double maxR;
+	double maxG;
+	double maxB;
+	Mat bgr[3];
+
+	if(*imageReadyFlag == IMAGE_NOT_READY) return;
+
+	split(displayImage(thresholdROI), bgr);
+	minMaxLoc(bgr[0], &minR, &maxR);
+	minMaxLoc(bgr[1], &minG, &maxG);
+	minMaxLoc(bgr[2], &minB, &maxB);
+
+	thresholdLow = Scalar(minR, minG, minB);
+	thresholdHigh = Scalar(maxR, maxG, maxB);
+
+	putText(displayImage, format("minR: %f", minR), Point(0, 10), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	putText(displayImage, format("minG: %f", minG), Point(0, 25), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	putText(displayImage, format("minB: %f", minB), Point(0, 40), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	putText(displayImage, format("maxR: %f", maxR), Point(0, 55), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	putText(displayImage, format("maxG: %f", maxG), Point(0, 70), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	putText(displayImage, format("maxB: %f", maxB), Point(0, 85), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
+	rectangle(displayImage, thresholdROI, Scalar(0, 255, 0), 1, 8, 0);
+
+	imshow("Display_Image", displayImage);
+	imshow("Processing_Image", processingImage);
 }
 
 void visionManagerProcessCaffe()
@@ -157,17 +262,17 @@ void visionManagerProcessCaffe()
 
 	//resize(displayImage, processingImage, resized, 0, 0, CV_INTER_LINEAR);
 	Mat blob = cv::dnn::blobFromImage(displayImage,
-						0.007843f,
-						resized,
-						Scalar(127.5));
-	net.setInput(blob);
-	Mat detections = net.forward();
+										0.007843f,
+										resized,
+										Scalar(127.5));
+	caffeNet.setInput(blob);
+	Mat detections = caffeNet.forward();
 	for(int i = 0; i < detections.size[2]; i++)
 	{
 		int idxConf[4] = {0, 0, i, 2};
 		float conf = detections.at<float>(idxConf);
 
-		if(conf > 0.5f)
+		if(conf > caffeConfidence)
 		{
 			int idxCls[4] = {0, 0, i, 1};
 			int cls = detections.at<float>(idxCls);
@@ -184,28 +289,26 @@ void visionManagerProcessCaffe()
 
 			Rect detection(position.x, position.y, width, height);
 			rectangle(displayImage, detection, Scalar(0, 255, 0), 1, 8, 0);
-    			string label = format("%.2f", conf);
-    			if (!classes.empty())
-    			{
-        			CV_Assert(cls < (int)classes.size());
-        			label = classes[cls] + ":" + label;
-    			}
+			string label = format("%.2f", conf);
+			if (!caffeClasses.empty())
+			{
+				CV_Assert(cls < (int)caffeClasses.size());
+				label = caffeClasses[cls] + ":" + label;
+			}
 			putText(displayImage, label, Point(position.x, position.y + 10), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
 		}
 	}
-	setWindowTitle("Display_Image", "Process Image By DNN");
-	setWindowTitle("Processing_Image", "Not Used.");
 	imshow("Display_Image", displayImage);
 	imshow("Processing_Image", processingImage);
 }
 
 void visionManagerProcessDarknet()
 {
-	const Size resized(224, 224);
+	const Size resized(192, 192);
 	Point position;
-    	vector<int> classIds;
-    	vector<float> confidences;
-    	vector<Rect> boxes;
+	vector<int> classIds;
+	vector<float> confidences;
+	vector<Rect> boxes;
 
 	char outputMessage[64];
 
@@ -213,13 +316,13 @@ void visionManagerProcessDarknet()
 
 	//resize(displayImage, processingImage, resized, 0, 0, CV_INTER_LINEAR);
 	Mat blob = cv::dnn::blobFromImage(displayImage,
-						0.007843f,
-						resized,
-						Scalar(127.5));
+										0.007843f,
+										resized,
+										Scalar(127.5));
      
-	net.setInput(blob);
+	darknetNet.setInput(blob);
 	vector<Mat> outs;
-	net.forward(outs, unconnectedOutputLayersNames);
+	darknetNet.forward(outs, unconnectedOutputLayersNames);
 
     	for (size_t i = 0; i < outs.size(); ++i)
     	{
@@ -234,7 +337,7 @@ void visionManagerProcessDarknet()
             		double confidence;
             		// Get the value and location of the maximum score
             		minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
-            		if (confidence > confThreshold)
+            		if (confidence > darknetConfidence)
             		{
                 		int centerX = (int)(data[0] * displayImage.cols);
                 		int centerY = (int)(data[1] * displayImage.rows);
@@ -253,7 +356,7 @@ void visionManagerProcessDarknet()
     	// Perform non maximum suppression to eliminate redundant overlapping boxes with
     	// lower confidences
     	vector<int> indices;
-    	NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, indices);
+    	NMSBoxes(boxes, confidences, darknetConfidence, darknetNonMaximaSuppressionThreshold, indices);
 
     	for (size_t i = 0; i < indices.size(); ++i)
     	{
@@ -261,16 +364,13 @@ void visionManagerProcessDarknet()
         	Rect box = boxes[idx];
     		rectangle(displayImage, Point(box.x, box.y), Point(box.x + box.width, box.y + box.height), Scalar(0, 255, 0), 1, 8, 0);
     		string label = format("%.2f", confidences[idx]);
-    		if (!classes.empty())
+    		if (!darknetClasses.empty())
     		{
-        		CV_Assert(classIds[idx] < (int)classes.size());
-        		label = classes[classIds[idx]] + ":" + label;
+        		CV_Assert(classIds[idx] < (int)darknetClasses.size());
+        		label = darknetClasses[classIds[idx]] + ":" + label;
     		}
     		putText(displayImage, label, Point(box.x, box.y), CV_FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2, 8, false);
 	}
-
-	setWindowTitle("Display_Image", "Process Image By DNN");
-	setWindowTitle("Processing_Image", "Not Used.");
 	imshow("Display_Image", displayImage);
 	imshow("Processing_Image", processingImage);
 }
