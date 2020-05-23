@@ -138,3 +138,7 @@ ln -s /usr/bin /usr/share/ti/cgt-pru/bin
 ------------to fix bad DOS line returns in scripts
 
 sed -i -e 's/\r$//' scriptname.sh
+
+------------to be able to build kernel modules
+
+sudo apt-get install linux-headers-`uname -r`
