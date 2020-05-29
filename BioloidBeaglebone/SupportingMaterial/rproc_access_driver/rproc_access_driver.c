@@ -9,7 +9,7 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Bill Merryman");
-MODULE_DESCRIPTION("A simple module to access carveout information from the PRU rproc.");
+MODULE_DESCRIPTION("A simple module to access carveout information from the pru rproc.");
 MODULE_VERSION("0.01");
 
 /*
@@ -20,47 +20,47 @@ MODULE_VERSION("0.01");
 	/sys/class/remoteproc/remoteproc2
 	is a symbolic link for 
 	/sys/devices/platform/ocp/4a326004.pruss-soc-bus/4a300000.pruss/4a338000.pru/remoteproc/remoteproc2
-	
-	/*
-		Next up, get the tear-down working on remove rproc_access_driver_remove. Will need to add the 
-		carveout subdirectories into the list on creation and then 'put' each in the list before freeing 
-		the carveouts_dir_kobj_ptr in rproc_subdev_container on disposal.
-	*/
-
 */
 
 struct carveout_kobject
 {
-	struct list_head node;
-	int resource_entry_number;
-	struct fw_rsc_carveout *carveout;
-	struct kobject kobj;
+	struct kobject kobj;					//kobject for carveout_{n} directory in the carveouts directory
+	int resource_entry_number;				//position in the resource table's offsets array of the carveout
+	struct fw_rsc_carveout *carveout;		//entry in the resource table of the carveout resource
+	struct list_head node;					//to add to linked list of carveouts (carveout_directories) in rproc_subdev_container
 };
 	
 struct rproc_subdev_container
 {
-	struct rproc *rproc;
-	struct rproc_subdev rproc_subdev;
-	struct kobject *carveouts_dir_kobj_ptr;
-	struct list_head carveout_directories;
+	struct rproc_subdev rproc_subdev;		//'the' carveout monitor subdevice
+	struct rproc *rproc;					//rproc this carveout monitor is a subdevice for
+	struct kobject *carveouts_dir_kobj_ptr;	//the 'carveouts' directory that each carveout information dir will be added to
+	struct list_head carveout_directories;	//list of type carveout_kobject, one for each carveout
 };
 
+//'The' subdevice container that implements our carveout monitor
+
 static struct rproc_subdev_container *rproc_subdev_container;
-				   											   
+
+//The file attributes associated with each carveout: physical address (pa), length (len), and name (name)
+				
+//shows the physical address of the carveout				
 static ssize_t pa_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {	
 	struct carveout_kobject *carveout_kobject = container_of(kobj, struct carveout_kobject, kobj);
 	struct fw_rsc_carveout *carveout = carveout_kobject->carveout;
 	return sprintf(buf, "%x", carveout->pa);
 }
-						   											   
+
+//shows the length/size of the carveout					   											   
 static ssize_t len_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {	
 	struct carveout_kobject *carveout_kobject = container_of(kobj, struct carveout_kobject, kobj);
 	struct fw_rsc_carveout *carveout = carveout_kobject->carveout;
 	return sprintf(buf, "%x", carveout->len);
 }
-						   											   
+
+//shows the name of the carveout					   											   
 static ssize_t name_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {	
 	struct carveout_kobject *carveout_kobject = container_of(kobj, struct carveout_kobject, kobj);
@@ -79,10 +79,13 @@ struct attribute *carveout_attrs[] = {
     NULL,
 };
 
+//end: The file attributes associated with each carveout: physical address (pa), length (len), and name (name)
+
+//Custom release method and kobj_type for our kobject container which represents the kobject for each carveout subdirectory
 void obj_release(struct kobject *kobj)
 {
     struct carveout_kobject *carveout_kobject = container_of(kobj, struct carveout_kobject, kobj);
-    printk(KERN_INFO "carveout_kobject release\n");
+    printk(KERN_INFO "freeing %s carveout_kobject\n", kobject_name(&carveout_kobject->kobj));
     kfree(carveout_kobject);
 }
 
@@ -93,22 +96,21 @@ static struct kobj_type carveout_kobj_ktype = {
 
 int rproc_access_driver_probe(struct rproc_subdev *subdev)
 {
-	int error = 0;
-	
-	//Get the subdevice container to get the rproc
+	//Get the subdevice container to get the rproc, to get the table, and to get the device to get the kobject
+	//I should probably use get_device for the device here, but I'll live dangerously for now...
 	struct rproc_subdev_container *rproc_subdev_container = container_of(subdev, struct rproc_subdev_container, rproc_subdev);
 	struct rproc *rproc = rproc_subdev_container->rproc;
-	struct device *remoteproc_device_ptr = &rproc->dev;
-	struct kobject *remoteproc_device_kobj_ptr = &remoteproc_device_ptr->kobj;
+	struct device *dev = &rproc->dev;
+	struct kobject *kobj = &dev->kobj;
 	struct resource_table *table = rproc->table_ptr;
 	int resource_counter;
 	
 	if (!table) return 0;
 	
 	//Create the 'carveouts' directory
-	rproc_subdev_container->carveouts_dir_kobj_ptr = kobject_create_and_add("carveouts", remoteproc_device_kobj_ptr); 
+	rproc_subdev_container->carveouts_dir_kobj_ptr = kobject_create_and_add("carveouts", kobj); 
 	if(!rproc_subdev_container->carveouts_dir_kobj_ptr) return -ENOMEM;
-	printk(KERN_INFO "%s subdirectory created on probe\n", kobject_name(rproc_subdev_container->carveouts_dir_kobj_ptr));
+	printk(KERN_INFO "%s directory created on probe\n", kobject_name(rproc_subdev_container->carveouts_dir_kobj_ptr));
 	
 	//Create a directory for each carveout by name
 	
@@ -120,103 +122,105 @@ int rproc_access_driver_probe(struct rproc_subdev *subdev)
 		{
 			char carveout_folder_name[12];
 			sprintf(carveout_folder_name, "carveout_%d", resource_counter);
-			
-			//This is where we will need to make the custom kobject, instead of this create and add.
-			//Are we going to want to add these to some kind of linked list for later removal?
 			struct carveout_kobject *carveout_kobject = kzalloc(sizeof(*carveout_kobject), GFP_KERNEL);
 			if (!carveout_kobject) {
-				return -ENOMEM;
+				printk(KERN_INFO "failed to kzalloc %s subdirectory on probe.  Skipping...\n", carveout_folder_name);
+				continue;
 			}
 			carveout_kobject->resource_entry_number = resource_counter;
 			carveout_kobject->carveout = (struct fw_rsc_carveout *)rsc;    
-			kobject_init_and_add(&carveout_kobject->kobj, &carveout_kobj_ktype, rproc_subdev_container->carveouts_dir_kobj_ptr, carveout_folder_name);
-			error = sysfs_create_files(&carveout_kobject->kobj, (const struct attribute **)carveout_attrs);
-			if (error)
+			if (kobject_init_and_add(&carveout_kobject->kobj, &carveout_kobj_ktype, rproc_subdev_container->carveouts_dir_kobj_ptr, carveout_folder_name))
 			{
-				printk(KERN_INFO "create obj attribute failed!\n");
-				kobject_put(&carveout_kobject->kobj);
-				return error;
+				printk(KERN_INFO "failed to init and add %s subdirectory on probe.  Skipping...\n", kobject_name(&carveout_kobject->kobj));
+				kfree(carveout_kobject);
+				continue;
 			}
+			if (sysfs_create_files(&carveout_kobject->kobj, (const struct attribute **)carveout_attrs))
+			{
+				printk(KERN_INFO "failed create attribute files for %s on probe. skipping...\n", kobject_name(&carveout_kobject->kobj));
+				kobject_put(&carveout_kobject->kobj);
+				continue;
+			}
+			list_add_tail(&carveout_kobject->node, &rproc_subdev_container->carveout_directories);
+			printk(KERN_INFO "%s subdirectory created on probe\n", kobject_name(&carveout_kobject->kobj));
 		}
 	}
 	
-	return error;
+	return 0;
 }
 
 void rproc_access_driver_remove(struct rproc_subdev *subdev)
 {
 	struct rproc_subdev_container *rproc_subdev_container = container_of(subdev, struct rproc_subdev_container, rproc_subdev);
-	struct rproc *rproc = rproc_subdev_container->rproc;
-	struct device *remoteproc_device_ptr = &rproc->dev;
-	struct kobject *remoteproc_device_kobj_ptr = &remoteproc_device_ptr->kobj;
-	struct kobject *carveouts_dir_kobj_ptr;
-	/*
-		Do a loop here to put all of the carveout directories
-	*/
+	struct carveout_kobject *carveout_kobject, *tmp;
+
+	list_for_each_entry_safe(carveout_kobject, tmp, &rproc_subdev_container->carveout_directories, node) {
+		list_del(&carveout_kobject->node);
+		kobject_put(&carveout_kobject->kobj);
+	}
+
 	kobject_put(rproc_subdev_container->carveouts_dir_kobj_ptr);
 	rproc_subdev_container->carveouts_dir_kobj_ptr = NULL;
-	printk(KERN_INFO "Carveout subdirectory removed on PRU shutdown\n");
+	printk(KERN_INFO "carveout directory removed on remove\n");
 }
 
 static int __init rproc_access_driver_init(void)
 {
 	//Get the device node
-	struct device_node *pru_device_node_ptr = of_find_node_by_path("/ocp/pruss_soc_bus@4a326004/pruss@0/pru@34000");
-	if(!pru_device_node_ptr)
+	struct device_node *device_node = of_find_node_by_path("/ocp/pruss_soc_bus@4a326004/pruss@0/pru@34000");
+	if(!device_node)
 	{
 		printk(KERN_INFO "pru device node could not be acquired at init\n");
 		return -ENODEV;
 	}
-	printk(KERN_INFO "pru device node acquired at init. full_name: %s\n", pru_device_node_ptr->full_name);
+	printk(KERN_INFO "pru device node (full_name: %s) acquired at init\n", device_node->full_name);
 	
 	//Get the platform device
-	struct platform_device *pru_platform_device_ptr = of_find_device_by_node(pru_device_node_ptr);
-	of_node_put(pru_device_node_ptr); //release the device node
-	if (!pru_platform_device_ptr)
+	struct platform_device *platform_device = of_find_device_by_node(device_node);
+	of_node_put(device_node); //release the device node
+	if (!platform_device)
 	{
 		printk(KERN_INFO "pru platform device could not be acquired at init\n");
 		return -EPROBE_DEFER;
 	}
-
-	//Make sure the device we got is a pru (not really necessary here)
-	if (!strstr(dev_name(&pru_platform_device_ptr->dev), "pru") && !strstr(dev_name(&pru_platform_device_ptr->dev), "rtu"))
+	printk(KERN_INFO "pru platform device (name: %s) acquired at init\n", platform_device->name);
+	
+	//Make sure the device we got is a pru (probably not really necessary here)
+	if (!strstr(dev_name(&platform_device->dev), "pru") && !strstr(dev_name(&platform_device->dev), "rtu"))
 	{
-		put_device(&pru_platform_device_ptr->dev);
+		put_device(&platform_device->dev);
 		return -ENODEV;
 	}
 
 	//Get the rproc
-	struct rproc *rproc = platform_get_drvdata(pru_platform_device_ptr);
-	put_device(&pru_platform_device_ptr->dev); //release the platform device
+	struct rproc *rproc = platform_get_drvdata(platform_device);
+	put_device(&platform_device->dev); //release the platform device.
 	if (!rproc)
 	{
 		printk(KERN_INFO "rproc could not be acquired at init\n");
 		return -EPROBE_DEFER;
 	}
-	printk(KERN_INFO "rproc acquired at init. name: %s\n", rproc->name);
+	printk(KERN_INFO "rproc (name: %s) acquired at init\n", rproc->name);
 
-	//Get the device from the rproc, and then the kobject from the device
-	//I should probably use get_device here, but I'll live dangerously for now...
-	struct device *remoteproc_device_ptr = &rproc->dev;
-	struct kobject *remoteproc_device_kobj_ptr = &remoteproc_device_ptr->kobj;
-	printk(KERN_INFO "remoteproc kobj name: %s\n", remoteproc_device_kobj_ptr->name);
-
-	//Create a subdevice container with the subdevice for the callbacks to occur when the pru is started and stopped
+	//Create a subdevice container (which containes the rproc_subdev that implements the carveout monitor and handles its callbacks)
 	rproc_subdev_container = kzalloc(sizeof(*rproc_subdev_container), GFP_KERNEL);
 	if(!rproc_subdev_container) return -ENOMEM;
-
+	INIT_LIST_HEAD(&rproc_subdev_container->carveout_directories);
 	rproc_subdev_container->rproc = rproc;
+	
 	//Add the subdevice
 	rproc_add_subdev(rproc, &rproc_subdev_container->rproc_subdev, rproc_access_driver_probe, rproc_access_driver_remove);
 
 	return 0;
+	
+	//Do I need to do a 'get' on the rproc? If so, I should then do a matching 'put' call in the __exit function?
 }
 
 static void __exit rproc_access_driver_exit(void)
 {
+	if(rproc_subdev_container->carveouts_dir_kobj_ptr) rproc_access_driver_remove(&rproc_subdev_container->rproc_subdev);
 	rproc_remove_subdev(rproc_subdev_container->rproc, &rproc_subdev_container->rproc_subdev);
-	printk(KERN_INFO "Freeing carveout subdevice memory\n");
-	kfree(rproc_subdev_container);
+	printk(KERN_INFO "rproc_access_driver exit\n");
 }
 
 module_init(rproc_access_driver_init);
