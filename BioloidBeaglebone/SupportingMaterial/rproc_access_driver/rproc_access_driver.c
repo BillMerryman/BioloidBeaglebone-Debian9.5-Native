@@ -38,7 +38,7 @@ struct rproc_subdev_container
 	struct list_head carveout_directories;	//list of type carveout_kobject, one for each carveout
 };
 
-//'The' subdevice container that implements our carveout monitor
+//'The' subdevice container that implements our carveout monitor. May eventually modify to enumerate all remoteproc instances.
 
 static struct rproc_subdev_container *rproc_subdev_container;
 
@@ -96,7 +96,12 @@ static struct kobj_type carveout_kobj_ktype = {
 
 int rproc_access_driver_probe(struct rproc_subdev *subdev)
 {
-	//Get the subdevice container to get the rproc, to get the table, and to get the device to get the kobject
+	//Get the subdevice container to get the rproc, which is used to get the resource table, 
+	//and also to get the device through which we get the kobject
+	//The kobject is for the remoteproc directory, in my case:
+	//		/sys/devices/platform/ocp/4a326004.pruss-soc-bus/4a300000.pruss/4a334000.pru/remoteproc/remoteproc1
+	//which is also aliased from 
+	//		/sys/class/remoteproc/remoteproc1
 	//I should probably use get_device for the device here, but I'll live dangerously for now...
 	struct rproc_subdev_container *rproc_subdev_container = container_of(subdev, struct rproc_subdev_container, rproc_subdev);
 	struct rproc *rproc = rproc_subdev_container->rproc;
@@ -107,13 +112,13 @@ int rproc_access_driver_probe(struct rproc_subdev *subdev)
 	
 	if (!table) return 0;
 	
-	//Create the 'carveouts' directory
+	//Create the 'carveouts' directory in the remoteproc directory (remoteproc1 in this case)
 	rproc_subdev_container->carveouts_dir_kobj_ptr = kobject_create_and_add("carveouts", kobj); 
 	if(!rproc_subdev_container->carveouts_dir_kobj_ptr) return -ENOMEM;
 	printk(KERN_INFO "%s directory created on probe\n", kobject_name(rproc_subdev_container->carveouts_dir_kobj_ptr));
 	
-	//Create a directory for each carveout by name
-	
+	//Create a directory for each carveout. 
+	//We will name them 'carveout_{n}' where {n} is the index of the carveout in the resource table
 	for (resource_counter = 0; resource_counter < table->num; resource_counter++) {
 		int offset = table->offset[resource_counter];
 		struct fw_rsc_hdr *hdr = (void *)table + offset;
@@ -154,14 +159,16 @@ void rproc_access_driver_remove(struct rproc_subdev *subdev)
 	struct rproc_subdev_container *rproc_subdev_container = container_of(subdev, struct rproc_subdev_container, rproc_subdev);
 	struct carveout_kobject *carveout_kobject, *tmp;
 
+	//remove all of the carveout subdirectories from the carveouts directory
 	list_for_each_entry_safe(carveout_kobject, tmp, &rproc_subdev_container->carveout_directories, node) {
 		list_del(&carveout_kobject->node);
 		kobject_put(&carveout_kobject->kobj);
 	}
 
+	//remove the carveouts directory
 	kobject_put(rproc_subdev_container->carveouts_dir_kobj_ptr);
 	rproc_subdev_container->carveouts_dir_kobj_ptr = NULL;
-	printk(KERN_INFO "carveout directory removed on remove\n");
+	printk(KERN_INFO "carveouts directory removed on remove\n");
 }
 
 static int __init rproc_access_driver_init(void)
