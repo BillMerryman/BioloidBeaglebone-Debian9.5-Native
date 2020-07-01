@@ -17,5 +17,5 @@ echo "Launching BioloidBeaglebone"; \
 	./SupportingMaterial/MLFiles/PersonDogCatBirdYOLO/voc.names \
 	./SupportingMaterial/MLFiles/PersonDogCatBirdYOLO/deploy.cfg \
 	./SupportingMaterial/MLFiles/PersonDogCatBirdYOLO/deploy.weights \
-	.2 \
+	.1 \
 	.3;
